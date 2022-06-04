@@ -1,0 +1,119 @@
+<html>
+
+<head>
+  <title>Ping</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Consolas,monaco,monospace; 
+    }
+    body {
+      background-color: #222;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 375px;
+    }
+    .latency-container {
+      padding: 50px;
+      background-color: #333;
+      font-size: 5vw;
+      margin-top: 50px;
+    }
+
+    .separator {
+      width: 8px;
+      height: 8px;
+      border-radius: 100%;
+      background-color: white;
+      margin: 5vh;
+    }
+
+    input:focus {
+      border-color: rgb(37, 69, 255);
+    }
+
+    table {
+      background-color: #111;
+    }
+    th {
+      padding: 20px 28px;
+    }
+
+    h1 {
+      font-size: 6vw;
+    }
+
+    #leaderboard {
+      font-size: 4vw;
+      width: 100%;
+      margin-bottom: 50px;
+    }
+
+    #leaderboard > div {
+      width: 100%;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2vw;
+    }
+  </style>
+
+  <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"
+    integrity="sha384-7EyYLQZgWBi67fBtVxw60/OWl1kjsfrPFcaU0pp0nAh+i8FD068QogUvg85Ewy1k"
+    crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <div class="latency-container">Current latency: <span id="latencyContainer">Calculating...</span></div>
+  <h1>Leaderboard</h1>
+  <div id="leaderboard">
+    Loading...
+  </div>
+
+  <script>
+    const socket = io("https://latency-leaderboard.herokuapp.com/");
+    const latencyContainer = document.getElementById("latencyContainer")
+    socket.on("message", (message) => {
+      if (message === "pingMeasure") socket.emit("pongMeasure");
+    })
+    socket.on("latency", (latency) => {
+      if(latency) {
+        latencyContainer.textContent = Number.parseFloat(latency).toLocaleString(undefined, {
+          minimumFractionDigits: 6,
+          maximumFractionDigits: 6
+        }) + "ms"
+      }
+    })
+
+    const leaderboard_table = document.getElementById("leaderboard")
+    socket.on("leaderboard", (leaderboard) => {
+      console.log(leaderboard)
+      let table = ""
+      let index = 0
+      for (let entry of leaderboard) {
+        index++
+        let latency = entry.latency.toLocaleString(undefined, {
+          minimumFractionDigits: 6,
+          maximumFractionDigits: 6
+        }) + "ms"
+        table += `<div><span>${index} - ${entry.nickname}</span><span>${latency}</span></div>`
+      }
+      leaderboard_table.innerHTML = table
+    })
+
+
+    function send() {
+      let value = document.getElementById("hostName").value
+      if (value) {
+        socket.emit("send", value)
+      }
+    }
+  </script>
+</body>
+
+</html>
