@@ -102,7 +102,6 @@
 
     const leaderboard_table = document.getElementById("leaderboard")
     socket.on("leaderboard", (leaderboard) => {
-      console.log(leaderboard)
       let table = ""
       let index = 0
       for (let entry of leaderboard) {
