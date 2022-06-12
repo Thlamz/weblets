@@ -1,0 +1,137 @@
+<html lang="en" xml:lang="en">
+
+<head>
+  <title>Get away</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Please just leave me alone">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <link rel="stylesheet" href="https://thlamz.github.io/styles.css" crossorigin="anonymous">
+  <style>
+    body {
+      padding: 0 15%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      /* only animation-duration here is required, rest are optional (also animation-name but it will be set on hover)*/
+      animation-duration: 3s;
+      /* same as transition duration */
+      animation-timing-function: ease-in;
+    }
+
+    h1 {
+      font-size: 3.5vw;
+    }
+
+    @keyframes blinkAnimation {
+      0% {
+        background-color: var(--dark);
+      }
+
+      50% {
+        background-color: #2e0a00;
+      }
+
+      100% {
+        background-color: var(--dark);
+      }
+    }
+
+    .blinking {
+      animation-name: blinkAnimation;
+    }
+  </style>
+</head>
+
+<body>
+  <h1 id="greeting"></h1>
+
+  <script>
+    function transitionText(container, text) {
+      return new Promise((resolve, reject) => {
+        let index = 0
+
+        let interval = setInterval(() => {
+          container.innerHTML = text.substring(0, index) + "<  "
+
+          if (index == text.length) {
+            clearInterval(interval)
+            container.innerHTML = text
+            resolve()
+          }
+
+          index++
+        }, 60)
+      })
+    }
+
+    function formatUnit(unit, value) {
+      if (value > 0) {
+        if (value == 1) {
+          return `${value} ${unit} `
+        } else {
+          return `${value} ${unit}s `
+        }
+      }
+      return ""
+    }
+
+    function formatTimeDelta(delta) {
+      if (delta < 1000) {
+        return 'less than a second '
+      }
+
+      let seconds, minutes, hours, days
+
+      delta = delta / 1000
+
+      days = Math.floor(delta / (60 * 60 * 24))
+      delta = delta % (60 * 60 * 24)
+
+      hours = Math.floor(delta / (60 * 60))
+      delta = delta % (60 * 60)
+
+      minutes = Math.floor(delta / 60)
+      seconds = Math.floor(delta % 60)
+
+      let timeString = ""
+
+      timeString += formatUnit("day", days)
+      timeString += formatUnit("hour", hours)
+      timeString += formatUnit("minute", minutes)
+      timeString += formatUnit("second", seconds)
+
+
+      return timeString
+    }
+
+
+    fetch("https://thlamz-weblets.herokuapp.com/get-away/").then(async (value) => {
+      let status = await value.json()
+
+      const greeting = document.getElementById("greeting")
+      const time = Date.now() - Date.parse(status.last)      
+      let message = `It has been ${formatTimeDelta(time)}since someone last bothered me`
+      
+      if (time < 1000) {
+        message += ".<br><br>In fact, there is someone else here right now..."
+      } else {
+        if (status.wasUser) {
+          message += ", AND IT WAS YOU!"
+        } else {
+          message += "."
+        }
+      }
+
+      message += "<br><br>Please leave..."
+
+      await transitionText(greeting, message)
+      document.body.className += " blinking"
+    })
+
+
+  </script>
+</body>
+
+</html>
