@@ -123,8 +123,15 @@
           message += "."
         }
       }
+      
+      const count = status['count']
+      if (count > 1) {
+        message += `<br><br>This is the ${status['count']}th time today.`
+      } else {
+        message += `<br><br>At least you are the first one today.`
+      }
 
-      message += "<br><br>Please leave..."
+      message += "<br><br>Please just leave..."
 
       await transitionText(greeting, message)
       document.body.className += " blinking"
