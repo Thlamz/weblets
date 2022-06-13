@@ -9,4 +9,4 @@ Ping is a small web mini-game/experiment. The objective is to have the highest l
 ## Go away
 This is a very temperamental website, you should probably not access it anyway
 
-**If you must, it is available at https://thlamz.github.io/weblets/go-away/
+**If you must, it is available at https://thlamz.github.io/weblets/go-away/**
