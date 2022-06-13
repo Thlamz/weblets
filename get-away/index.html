@@ -108,33 +108,37 @@
 
 
     fetch("https://thlamz-weblets.herokuapp.com/get-away/").then(async (value) => {
-      let status = await value.json()
-
-      const greeting = document.getElementById("greeting")
-      const time = Date.now() - Date.parse(status.last)      
-      let message = `It has been ${formatTimeDelta(time)}since someone last bothered me`
-      
-      if (time < 1000) {
-        message += ".<br><br>In fact, there is someone else here right now..."
-      } else {
-        if (status.wasUser) {
-          message += ", AND IT WAS YOU!"
+      if (value.status === 200) {
+        let status = await value.json()
+  
+        const greeting = document.getElementById("greeting")
+        const time = Date.now() - Date.parse(status.last)      
+        let message = `It has been ${formatTimeDelta(time)}since someone last bothered me`
+        
+        if (time < 1000) {
+          message += ".<br><br>In fact, there is someone else here right now..."
         } else {
-          message += "."
+          if (status.wasUser) {
+            message += ", AND IT WAS YOU!"
+          } else {
+            message += "."
+          }
         }
-      }
-      
-      const count = status['count']
-      if (count > 1) {
-        message += `<br><br>This is the ${status['count']}th time today.`
+        
+        const count = status['count']
+        if (count > 1) {
+          message += `<br><br>This is the ${status['count']}th time today.`
+        } else {
+          message += `<br><br>At least you are the first one today.`
+        }
+  
+        message += "<br><br>Please just leave..."
+  
+        await transitionText(greeting, message)
+        document.body.className += " blinking"
       } else {
-        message += `<br><br>At least you are the first one today.`
+        await transitionText(greeting, "I can't really think right now, i'm not feeling well...")
       }
-
-      message += "<br><br>Please just leave..."
-
-      await transitionText(greeting, message)
-      document.body.className += " blinking"
     })
 
 
