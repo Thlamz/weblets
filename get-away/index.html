@@ -67,14 +67,11 @@
     }
 
     function formatUnit(unit, value) {
-      if (value > 0) {
-        if (value == 1) {
-          return `${value} ${unit} `
-        } else {
-          return `${value} ${unit}s `
-        }
+      if (value == 1) {
+        return `${value} ${unit} `
+      } else {
+        return `${value} ${unit}s `
       }
-      return ""
     }
 
     function formatTimeDelta(delta) {
@@ -82,25 +79,36 @@
         return 'less than a second '
       }
 
-      let seconds, minutes, hours, days
+      const units = ["day", "hour", "minute", "second"]
+      let time = {}
 
       delta = delta / 1000
 
-      days = Math.floor(delta / (60 * 60 * 24))
+      time["day"] = Math.floor(delta / (60 * 60 * 24))
       delta = delta % (60 * 60 * 24)
 
-      hours = Math.floor(delta / (60 * 60))
+      time["hour"] = Math.floor(delta / (60 * 60))
       delta = delta % (60 * 60)
 
-      minutes = Math.floor(delta / 60)
-      seconds = Math.floor(delta % 60)
+      time["minute"] = Math.floor(delta / 60)
+      time["second"] = Math.floor(delta % 60)
 
       let timeString = ""
-
-      timeString += formatUnit("day", days)
-      timeString += formatUnit("hour", hours)
-      timeString += formatUnit("minute", minutes)
-      timeString += formatUnit("second", seconds)
+      
+      // Finding last unit with value to add a "and"
+      let reversedUnits = [...units]
+      reversedUnits.reverse()
+      const lastUnit = units[units.length - 1 - reversedUnits.findIndex(u => time[u] > 0)]
+      const numValues = units.filter(u => time[u] > 0).length
+      
+      for(unit of units) {
+        if(time[unit] > 0) {
+          if(lastUnit === unit && numValues > 1) {
+            timeString += "and "
+          }
+          timeString += formatUnit(unit, time[unit])
+        }
+      }
 
 
       return timeString
