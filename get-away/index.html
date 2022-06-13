@@ -113,7 +113,7 @@
   
         const greeting = document.getElementById("greeting")
         const time = Date.now() - Date.parse(status.last)      
-        let message = `It has been ${formatTimeDelta(time)}since someone last bothered me`
+        let message = `It has been ${formatTimeDelta(time)}since I was last bothered`
         
         if (time < 1000) {
           message += ".<br><br>In fact, there is someone else here right now..."
