@@ -61,9 +61,20 @@ export class Ant implements Entity {
     }
 }
 
+const cache: Map<number, Map<number,[number, number]>> = new Map()
+
 function execute(elapsed: number, speed: number, direction: number): [number, number] {
-    const x = speed * Math.cos(direction) * elapsed / 1000
-    const y = speed * Math.sin(direction) * elapsed / 1000
+    if(!cache.has(speed)) {
+        cache.set(speed, new Map())
+    }
+    const speedCache = cache.get(speed)!
+    if(!speedCache.has(direction)) {
+        speedCache.set(direction, [speed * Math.cos(direction), speed * Math.sin(direction)])
+    }
+    const directionCache = speedCache.get(direction)!
+
+    const x = directionCache[0] * elapsed / 1000
+    const y = directionCache[1] * elapsed / 1000
     return [x, y]
 }
 
