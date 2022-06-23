@@ -1,17 +1,30 @@
 import "./worker.js" //Importing file so it compiles
 
-export interface AsyncWork {
-    args: Float64Array,
-    argSize: number,
-    resultSize: number
-    executorPath: string,
-    count: number
+export type SharedMemory = Record<string, SharedArrayBuffer>
+
+export interface DispatchTable {
+    totalWorkers: number,
+    currentWorker: number
 }
 
-export interface AsyncResult {
-    args: Float64Array,
-    result: Float64Array
+export interface DispatchData {
+    table: DispatchTable,
+    dispatcher: string
 }
+
+export interface ProvisionData {
+    key: string
+    buffer: SharedArrayBuffer
+}
+
+export type Dispatcher = (memory: SharedMemory, dispatchTable: DispatchTable) => void
+
+type MessageTypes = 'provision' | 'dispatch'
+export interface WorkerMessage<T extends MessageTypes> {
+    type: T,
+    data: T extends 'provision' ? ProvisionData : DispatchData
+}
+
 
 export class WorkerPool {
     readonly poolSize: number
@@ -29,19 +42,52 @@ export class WorkerPool {
         }
     }
 
-    async dispatch(work: AsyncWork[]): Promise<AsyncResult[]> {
+    async provision(buffer: SharedArrayBuffer, key: string) {
+        let provisionPromises:Promise<void>[] = []
+        for(const worker of this.workers) {
+            worker.postMessage(<WorkerMessage<'provision'>>{
+                type: 'provision',
+                data: {
+                    buffer,
+                    key
+                }
+            })
+
+            provisionPromises.push(this.waitUntilDone(worker))
+        }
+        await Promise.all(provisionPromises)
+    }
+
+    async dispatch(dispatcherPath: string): Promise<void> {
         let workerIndex = 0
         let workPromises = []
-        for (const job of work) {
-            workPromises.push(new Promise<AsyncResult>((resolve, reject) => {   
-                this.workers[workerIndex].postMessage(job, [job.args.buffer])
-                this.workers[workerIndex].onmessage = (msg: MessageEvent<AsyncResult>) => {
-                    resolve(msg.data)
-                }
-            }))
+        for (const worker of this.workers) {
+            const data: DispatchData = {
+                table: {
+                    totalWorkers: this.poolSize,
+                    currentWorker: workerIndex
+                },
+                dispatcher: dispatcherPath
+            }
+            this.workers[workerIndex].postMessage(<WorkerMessage<'dispatch'>>{
+                type: "dispatch",
+                data
+            })
+
+            workPromises.push(this.waitUntilDone(worker))
                 
             workerIndex++
         }
-        return (await Promise.all(workPromises))
+        await Promise.all(workPromises)
+    }
+
+    private async waitUntilDone(worker: Worker): Promise<void> {
+        return new Promise((resolve) => {
+            worker.onmessage = (msg: MessageEvent<any>) => {
+                if(msg.data === 'done') {
+                    resolve()
+                }
+            }
+        })
     }
 }

@@ -1,5 +1,6 @@
 import { CanvasManager } from "./canvas.js"
 import { Entity } from "./entity.js"
+import { Dispatcher } from "./workerPool.js"
 
 export class Ant implements Entity {
     private x: number = 0
@@ -36,9 +37,8 @@ export class Ant implements Entity {
     }
 
     asyncSimulate(elapsed: number, inplaceArgs: Float64Array, offset: number): void {
-        inplaceArgs[offset] = elapsed
-        inplaceArgs[offset + 1] = this.direction
-        inplaceArgs[offset + 2] = this.speed
+        inplaceArgs[offset] = this.direction
+        inplaceArgs[offset + 1] = this.speed
     }
 
     incorporate(result: Float64Array, offset: number, canvasManager: CanvasManager): void {
@@ -61,10 +61,30 @@ export class Ant implements Entity {
     }
 }
 
-export function execute(args: Float64Array, argsOffset: number,  inplaceResults: Float64Array, resultsOffset: number): void {
-    const elapsed = args[argsOffset]
-    const direction = args[argsOffset + 1]
-    const speed = args[argsOffset + 2]
-    inplaceResults[resultsOffset] = speed * Math.cos(direction) * elapsed / 1000
-    inplaceResults[resultsOffset + 1] = speed * Math.sin(direction) * elapsed / 1000
+function execute(elapsed: number, speed: number, direction: number): [number, number] {
+    const x = speed * Math.cos(direction) * elapsed / 1000
+    const y = speed * Math.sin(direction) * elapsed / 1000
+    return [x, y]
+}
+
+export const dispatch: Dispatcher = (memory, table) => {
+    const args = new Float64Array(memory["args"])
+    const results = new Float64Array(memory["results"])
+    const elapsed = args[0]
+    const entityCount = (args.length - 1) / 2
+    const batchSize = Math.ceil(entityCount / table.totalWorkers) 
+    const offset = batchSize * table.currentWorker
+
+    let index = 0
+    let entityIndex = 0
+    while(entityIndex < entityCount) {
+        const [x,y] = execute(elapsed, args[index + 1 + offset], args[index + 2 + offset])
+
+
+        results[index + offset] = x
+        results[index + 1 + offset] = y
+
+        index+=2
+        entityIndex++
+    }
 }

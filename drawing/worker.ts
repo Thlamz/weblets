@@ -1,31 +1,35 @@
-import type { AsyncWork } from "./workerPool";
+import type { DispatchData, Dispatcher, ProvisionData, SharedMemory, WorkerMessage } from "./workerPool";
 
-let executorCache: Record<string, Function> = {}
+let sharedMemory: SharedMemory = {}
 
-async function getExecutor(executorPath: string) {
-    if(executorPath in executorCache) {
-        return executorCache[executorPath]
+let dispatcherCache: Record<string, Function> = {}
+
+async function getDispatcher(dispatcher: string) {
+    if(dispatcher in dispatcherCache) {
+        return dispatcherCache[dispatcher]
     } else {
-        const { execute } = await import(executorPath)
-        executorCache[executorPath] = execute
-        return execute
+        const { dispatch } = await import(dispatcher)
+        dispatcherCache[dispatcher] = dispatch
+        return dispatch
     }
 }
 
-self.addEventListener("message", async (event: MessageEvent<AsyncWork>) => {
-    const {args, argSize, resultSize, executorPath, count} = event.data
+self.addEventListener("message", async (event: MessageEvent<WorkerMessage<'dispatch' | 'provision'>>) => {
+    const { type } = event.data
 
-    const execute = await getExecutor(executorPath)
-
-    let currentArgsIndex = 0
-    let currentResultIndex = 0
-    let result = new Float64Array(resultSize * count)
-    const length = args.length
-    while(currentArgsIndex < length) {
-        execute(args, currentArgsIndex, result, currentResultIndex)
-        currentArgsIndex += argSize
-        currentResultIndex += resultSize
+    switch(type) {
+        case "provision":
+            const { buffer, key } = event.data.data as ProvisionData
+            sharedMemory[key] = buffer
+            break
+        case "dispatch":
+            const data = event.data.data as DispatchData
+            const dispatch: Dispatcher = await getDispatcher(data.dispatcher)
+        
+            dispatch(sharedMemory, data.table)
+            
+            break
     }
-    // @ts-ignore
-    self.postMessage(<AsyncResult>{result, args}, [result.buffer, args.buffer])
+        
+    self.postMessage("done")
 })
