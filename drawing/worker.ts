@@ -1,35 +1,31 @@
-import type { DispatchData, Dispatcher, ProvisionData, SharedMemory, WorkerMessage } from "./workerPool";
+import type { AsyncWork } from "./workerPool";
 
-let sharedMemory: SharedMemory = {}
+let executorCache: Record<string, Function> = {}
 
-let dispatcherCache: Record<string, Function> = {}
-
-async function getDispatcher(dispatcher: string) {
-    if(dispatcher in dispatcherCache) {
-        return dispatcherCache[dispatcher]
+async function getExecutor(executorPath: string) {
+    if(executorPath in executorCache) {
+        return executorCache[executorPath]
     } else {
-        const { dispatch } = await import(dispatcher)
-        dispatcherCache[dispatcher] = dispatch
-        return dispatch
+        const { execute } = await import(executorPath)
+        executorCache[executorPath] = execute
+        return execute
     }
 }
 
-self.addEventListener("message", async (event: MessageEvent<WorkerMessage<'dispatch' | 'provision'>>) => {
-    const { type } = event.data
+self.addEventListener("message", async (event: MessageEvent<AsyncWork>) => {
+    const {args, argSize, resultSize, executorPath, count} = event.data
 
-    switch(type) {
-        case "provision":
-            const { buffer, key } = event.data.data as ProvisionData
-            sharedMemory[key] = buffer
-            break
-        case "dispatch":
-            const data = event.data.data as DispatchData
-            const dispatch: Dispatcher = await getDispatcher(data.dispatcher)
-        
-            dispatch(sharedMemory, data.table)
-            
-            break
+    const execute = await getExecutor(executorPath)
+
+    let currentArgsIndex = 0
+    let currentResultIndex = 0
+    let result = new Float64Array(resultSize * count)
+    const length = args.length
+    while(currentArgsIndex < length) {
+        execute(args, currentArgsIndex, result, currentResultIndex)
+        currentArgsIndex += argSize
+        currentResultIndex += resultSize
     }
-        
-    self.postMessage("done")
+    // @ts-ignore
+    self.postMessage(<AsyncResult>{result, args}, [result.buffer, args.buffer])
 })
